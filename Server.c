@@ -1,5 +1,61 @@
+/*This is for server*/
 
+#include<stdio.h>
+#include<poll.h>
+#include<sys/wait.h>
+#include<netinet/in.h>
+#include<errno.h>
+#include<arpa/inet.h>
 #include <limits.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<strings.h>
+#include<sys/types.h>
+#include<sys/socket.h>
+#include<signal.h>
+#define SERV_PORT 9877
+#define SA struct sockaddr
+#define MAXLINE 4096
+#define LISTENQ 1024
+#define INFTIM -1
+
+
+
+ssize_t writen(int fd, const void *vptr, size_t n)
+{
+	size_t nleft;
+	ssize_t nwritten;
+	const char *ptr;
+	
+	ptr = vptr;
+	nleft = n;
+	while(nleft > 0)
+	{
+		if((nwritten = write(fd, ptr, nleft)) <= 0){
+		
+			if(nwritten < 0 && errno == EINTR)
+				nwritten = 0;
+			else
+				return -1;
+	  }	
+		nleft -= nwritten;
+		ptr += nwritten;
+	}
+	return n;
+}
+
+void str_echo(int sockfd)
+{
+	ssize_t n;
+	char buf[MAXLINE];
+	again:
+		while((n = read(sockfd, buf, MAXLINE)) > 0)
+			writen(sockfd, buf, n);
+		if(n < 0 && errno == EINTR)
+			goto again;
+		else if(n < 0)
+			printf("str_echo: read error");
+}
 
 int
 main(int argc, char **argv)
@@ -25,7 +81,7 @@ main(int argc, char **argv)
 	maxi = 0;
 	for( ; ; )
 	{
-		nready = poll(client, maxi + 1; INFTIM);
+		nready = poll(client, maxi + 1, INFTIM);
 		if(client[0].revents & POLLRDNORM)
 		{
 			clilen = sizeof(cliaddr);
@@ -53,11 +109,11 @@ main(int argc, char **argv)
 		{
 			if((sockfd = client[i].fd) < 0)
 				continue;
-			if(client[i].reevents & (POLLRDNORM | POLLERR))
+			if(client[i].revents & (POLLRDNORM | POLLERR))
 			{
 				if((n = read(sockfd, buf, MAXLINE)) < 0)
 				{
-					if(errno = ECONNRESET)
+					if(errno == ECONNRESET)
 					{
 						close(sockfd);
 						client[i].fd = -1;
